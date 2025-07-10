@@ -146,12 +146,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
-		case "q":
-			if m.state == resultState {
-				m.quitting = true
-				return m, tea.Quit
-			}
-		case "r":
+		case "enter":
 			if m.state == resultState {
 				m.state = configState
 				m.result = nil
@@ -274,7 +269,7 @@ func (m model) View() string {
 			content.WriteString(m.formatNTPResponse(m.result))
 		}
 		content.WriteString("\n\n")
-		content.WriteString(labelStyle.Render("Press 'r' to run another test • 'q' to quit"))
+		content.WriteString(labelStyle.Render("Press Enter to run another test • Ctrl+C to quit"))
 	}
 
 	return content.String()
