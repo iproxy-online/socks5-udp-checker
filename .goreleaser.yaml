@@ -1,0 +1,105 @@
+# GoReleaser configuration for SOCKS5 UDP Checker
+version: 2
+
+project_name: socks5-udp-checker
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    - go generate ./...
+
+builds:
+  - id: socks5-udp-checker
+    main: ./cmd/main.go
+    binary: socks5-udp-checker
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Optional: exclude specific combinations
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+    wrap_in_directory: false
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^build:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+# GitHub release configuration
+release:
+  github:
+    owner: iproxy-online
+    name: socks5-udp-checker
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## 🌐 SOCKS5 UDP Checker {{.Tag}}
+
+    Beautiful, interactive CLI tool to test UDP connectivity through SOCKS5 proxies using NTP.
+
+    ### 📦 Installation
+
+    Download the appropriate binary for your platform from the assets below.
+
+    ### 🚀 Quick Start
+
+    ```bash
+    ./socks5-udp-checker
+    ```
+
+  footer: |
+    ## 💝 Thanks
+
+    Thanks to everyone who contributed to this release!
+
+    **Full Changelog**: https://github.com/iproxy-online/socks5-udp-checker/compare/{{ .PreviousTag }}...{{ .Tag }}
