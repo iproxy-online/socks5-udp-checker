@@ -69,6 +69,7 @@ const (
 	configState state = iota
 	testingState
 	resultState
+	versionState
 )
 
 type model struct {
@@ -153,13 +154,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = nil
 				return m, m.form.Init()
 			}
+		case "esc":
+			if m.state == versionState {
+				m.state = configState
+				return m, nil
+			}
 		case "v":
 			if m.state == configState || m.state == resultState {
-				// Show version info
-				fmt.Printf("SOCKS5 UDP Checker %s\n", version)
-				fmt.Printf("Commit: %s\n", commit)
-				fmt.Printf("Built: %s\n", date)
-				fmt.Printf("Built by: %s\n", builtBy)
+				// Show version info in TUI modal
+				m.state = versionState
 				return m, nil
 			}
 		}
@@ -270,6 +273,21 @@ func (m model) View() string {
 		}
 		content.WriteString("\n\n")
 		content.WriteString(labelStyle.Render("Press Enter to run another test • Ctrl+C to quit"))
+
+	case versionState:
+		content.WriteString(infoStyle.Render("📋 Version Information"))
+		content.WriteString("\n\n")
+
+		versionInfo := fmt.Sprintf(`SOCKS5 UDP Checker
+  Version:  %s
+  Commit:   %s
+  Built:    %s
+  Built by: %s`,
+			version, commit, date, builtBy)
+
+		content.WriteString(boxStyle.Render(versionInfo))
+		content.WriteString("\n\n")
+		content.WriteString(labelStyle.Render("Press Esc to go back • Ctrl+C to quit"))
 	}
 
 	return content.String()
