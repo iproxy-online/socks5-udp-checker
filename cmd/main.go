@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"strings"
 
@@ -11,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/txthinking/socks5"
 )
 
 // Version information (set by GoReleaser)
@@ -21,15 +19,6 @@ var (
 	date    = "unknown"
 	builtBy = "unknown"
 )
-
-type config struct {
-	socks5Address  string
-	socks5Username string
-	socks5Password string
-	ntpAddress     string
-}
-
-const timeout = 1000
 
 // Styles
 var (
@@ -93,10 +82,12 @@ func initialModel() model {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 	cfg := &config{
-		socks5Address:  "localhost:1080",
-		socks5Username: "",
-		socks5Password: "",
-		ntpAddress:     "time.google.com:123",
+		socks5Config: socks5Config{
+			address:  "localhost:1080",
+			username: "",
+			password: "",
+		},
+		ntpAddress: "time.google.com:123",
 	}
 
 	form := huh.NewForm(
@@ -104,19 +95,19 @@ func initialModel() model {
 			huh.NewInput().
 				Title("SOCKS5 Proxy Address").
 				Description("Enter the SOCKS5 proxy address (host:port)").
-				Value(&cfg.socks5Address).
+				Value(&cfg.address).
 				Placeholder("localhost:1080"),
 
 			huh.NewInput().
 				Title("SOCKS5 Username").
 				Description("Enter username (leave empty if no auth required)").
-				Value(&cfg.socks5Username).
+				Value(&cfg.username).
 				Placeholder("username"),
 
 			huh.NewInput().
 				Title("SOCKS5 Password").
 				Description("Enter password (leave empty if no auth required)").
-				Value(&cfg.socks5Password).
+				Value(&cfg.password).
 				EchoMode(huh.EchoModePassword).
 				Placeholder("password"),
 
@@ -211,29 +202,6 @@ func (m model) runTest() tea.Cmd {
 	}
 }
 
-func performNTPTest(cfg *config) (*ntp.Response, error) {
-	socks5Cl, err := socks5.NewClient(
-		cfg.socks5Address,
-		cfg.socks5Username,
-		cfg.socks5Password,
-		timeout,
-		timeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SOCKS5 client: %w", err)
-	}
-
-	resp, err := ntp.QueryWithOptions(cfg.ntpAddress, ntp.QueryOptions{
-		Dialer: func(_, remoteAddress string) (net.Conn, error) {
-			return socks5Cl.Dial("udp", remoteAddress)
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("NTP request failed: %w", err)
-	}
-
-	return resp, nil
-}
-
 func (m model) View() string {
 	if m.quitting {
 		return ""
@@ -255,7 +223,7 @@ func (m model) View() string {
 
 	case testingState:
 		content.WriteString(fmt.Sprintf("%s Testing UDP connectivity through SOCKS5 proxy...\n\n", m.spinner.View()))
-		content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s", m.config.socks5Address)))
+		content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s", m.config.address)))
 		content.WriteString("\n")
 		content.WriteString(infoStyle.Render(fmt.Sprintf("• Testing NTP server: %s", m.config.ntpAddress)))
 		content.WriteString("\n\n")
