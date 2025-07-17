@@ -61,9 +61,15 @@ const (
 	versionState
 )
 
+type formData struct {
+	socks5URL string
+	ntpServer string
+}
+
 type model struct {
 	state    state
 	config   *config
+	formData *formData
 	form     *huh.Form
 	spinner  spinner.Model
 	result   *ntp.Response
@@ -90,40 +96,50 @@ func initialModel() model {
 		ntpAddress: "time.google.com:123",
 	}
 
+	// Create form data that will persist
+	data := &formData{
+		socks5URL: "socks5://localhost:1080",
+		ntpServer: "time.google.com:123",
+	}
+
+	// Create the form and bind to the data fields
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Title("SOCKS5 Proxy Address").
-				Description("Enter the SOCKS5 proxy address (host:port)").
-				Value(&cfg.address).
-				Placeholder("localhost:1080"),
+				Title("SOCKS5 Connection URL").
+				Description("Enter SOCKS5 proxy URL (see supported formats below)").
+				Value(&data.socks5URL).
+				Placeholder("socks5://user:pass@host:port").
+				Validate(func(s string) error {
+					_, err := parseSocks5String(s)
+					if err != nil {
+						return fmt.Errorf("invalid format: %v", err)
+					}
+					return nil
+				}),
 
-			huh.NewInput().
-				Title("SOCKS5 Username").
-				Description("Enter username (leave empty if no auth required)").
-				Value(&cfg.username).
-				Placeholder("username"),
-
-			huh.NewInput().
-				Title("SOCKS5 Password").
-				Description("Enter password (leave empty if no auth required)").
-				Value(&cfg.password).
-				EchoMode(huh.EchoModePassword).
-				Placeholder("password"),
+			huh.NewNote().
+				Title("Supported URL Formats:").
+				Description(`• socks5://host:port (no authentication)
+• socks5://username:password@host:port
+• socks5://host:port:username:password
+• socks5:host:port (no authentication)
+• socks5:host:port:username:password`),
 
 			huh.NewInput().
 				Title("NTP Server").
 				Description("Enter the NTP server to test UDP connectivity").
-				Value(&cfg.ntpAddress).
+				Value(&data.ntpServer).
 				Placeholder("time.google.com:123"),
 		),
 	)
 
 	return model{
-		state:   configState,
-		config:  cfg,
-		form:    form,
-		spinner: s,
+		state:    configState,
+		config:   cfg,
+		formData: data,
+		form:     form,
+		spinner:  s,
 	}
 }
 
@@ -143,6 +159,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = configState
 				m.result = nil
 				m.err = nil
+				// Reset to default values
+				m.formData.socks5URL = "socks5://localhost:1080"
+				m.formData.ntpServer = "time.google.com:123"
 				return m, m.form.Init()
 			}
 		case "esc":
@@ -180,6 +199,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.form.State == huh.StateCompleted {
+			// Update config from form values
+			m.config.ntpAddress = m.formData.ntpServer
+
+			// Parse the SOCKS5 URL and update the config
+			if parsedConfig, err := parseSocks5String(m.formData.socks5URL); err == nil {
+				m.config.socks5Config = parsedConfig
+			} else {
+				// If parsing fails, use defaults (this shouldn't happen due to validation)
+				m.config.socks5Config = socks5Config{
+					address:  "localhost:1080",
+					username: "",
+					password: "",
+				}
+			}
 			m.state = testingState
 			return m, tea.Batch(cmd, m.spinner.Tick, m.runTest())
 		}
@@ -223,7 +256,13 @@ func (m model) View() string {
 
 	case testingState:
 		content.WriteString(fmt.Sprintf("%s Testing UDP connectivity through SOCKS5 proxy...\n\n", m.spinner.View()))
-		content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s", m.config.address)))
+
+		// Show parsed SOCKS5 configuration
+		if m.config.username != "" {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s (authenticated)", m.config.address)))
+		} else {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s (no auth)", m.config.address)))
+		}
 		content.WriteString("\n")
 		content.WriteString(infoStyle.Render(fmt.Sprintf("• Testing NTP server: %s", m.config.ntpAddress)))
 		content.WriteString("\n\n")

@@ -85,7 +85,8 @@ release:
   header: |
     ## 🌐 SOCKS5 UDP Checker {{.Tag}}
 
-    Beautiful, interactive CLI tool to test UDP connectivity through SOCKS5 proxies using NTP.
+    Reliable, user-friendly CLI tool to verify UDP support in SOCKS5 proxies via NTP.
+    Cross-platform, easy to use, and built for stable, trustworthy results.
 
     ### 📦 Installation
 
