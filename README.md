@@ -40,7 +40,8 @@ Download a pre-built binary for your operating system:
 
 1. Visit the [Releases page](https://github.com/iproxy-online/socks5-udp-checker/releases)
 2. Download the appropriate binary for your system:
-   - **Linux**: `socks5-udp-checker-linux-amd64`
+   - **Linux (amd64)**: `socks5-udp-checker-linux-amd64`
+   - **Linux (arm64)**: `socks5-udp-checker-linux-arm64`
    - **macOS (Intel)**: `socks5-udp-checker-darwin-amd64`
    - **macOS (Apple Silicon)**: `socks5-udp-checker-darwin-arm64`
    - **Windows**: `socks5-udp-checker-windows-amd64.exe`

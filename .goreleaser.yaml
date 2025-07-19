@@ -12,7 +12,7 @@ before:
 
 builds:
   - id: socks5-udp-checker
-    main: ./cmd/main.go
+    main: ./cmd
     binary: socks5-udp-checker
     env:
       - CGO_ENABLED=0
@@ -36,7 +36,8 @@ builds:
 
 archives:
   - id: default
-    format: binary
+    formats:
+      - binary
     name_template: >-
       {{ .ProjectName }}-
       {{- .Os }}-
