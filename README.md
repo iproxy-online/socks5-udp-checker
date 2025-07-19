@@ -7,12 +7,10 @@
   - [Getting Started](#getting-started)
   - [Configuration](#configuration)
     - [SOCKS5 Proxy Formats](#socks5-proxy-formats)
-    - [Examples](#examples)
   - [Understanding Results](#understanding-results)
     - [Success](#success)
     - [Common Failures](#common-failures)
   - [Controls](#controls)
-  - [Troubleshooting](#troubleshooting)
   - [License](#license)
 
 
@@ -43,7 +41,8 @@ Download a pre-built binary for your operating system:
 1. Visit the [Releases page](https://github.com/iproxy-online/socks5-udp-checker/releases)
 2. Download the appropriate binary for your system:
    - **Linux**: `socks5-udp-checker-linux-amd64`
-   - **macOS**: `socks5-udp-checker-darwin-amd64`
+   - **macOS (Intel)**: `socks5-udp-checker-darwin-amd64`
+   - **macOS (Apple Silicon)**: `socks5-udp-checker-darwin-arm64`
    - **Windows**: `socks5-udp-checker-windows-amd64.exe`
 
 ### Linux and macOS Installation
@@ -92,30 +91,58 @@ socks5://hostname:port:username:password
 socks5://hostname:port
 ```
 
-### Examples
-
-```
-# No authentication
-socks5://proxy.example.com:1080
-
-# With authentication
-socks5://user:pass@proxy.example.com:1080
-```
-
 ## Understanding Results
 
 ### Success
+
+When the test is successful, you will see output similar to:
+
 ```
 ✅ Test Successful
-Server Time: 2025-07-16 14:30:25
-Round Trip Time: 45.2ms
+
+╭──────────────────────────────────────────────────╮
+│                                                  │
+│  NTP Response Summary:                           │
+│    Server Time:     2025-07-19 10:04:16.500 UTC  │
+│    Round Trip Time: 84.405832ms                  │
+│    Clock Offset:    164.200067ms                 │
+│    Stratum:         1                            │
+│                                                  │
+╰──────────────────────────────────────────────────╯
 ```
 
 ### Common Failures
 
-**Connection refused**: Proxy server not accessible
-**Authentication failed**: Wrong username/password
-**Timeout**: Proxy doesn't support UDP or blocks NTP
+When the test fails, you may encounter various error messages. Here is an example of a failure due to connection issues:
+
+```
+❌ Test Failed
+
+╭───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                   │
+│  Error: NTP request failed: dial tcp 127.0.0.1:1080: connect: connection refused  │
+│                                                                                   │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+```
+
+**Common Error Messages and Solutions:**
+
+- **`Invalid Username or Password for Auth`**: The provided credentials are incorrect or not accepted by the proxy server. Double-check your username and password, and ensure they match the proxy server's authentication requirements.
+
+- **`connect: connection refused`**: The proxy server is not reachable or not accepting connections. Verify that:
+  - The proxy server is running and accessible
+  - The hostname and port are correct
+  - No firewall is blocking the connection
+
+- **`lookup unexistent.proxy: no such host`**: The proxy hostname could not be resolved. This typically indicates:
+  - DNS resolution issues
+  - Incorrect or misspelled hostname
+  - Network connectivity problems
+
+- **`Host unreachable`**: The proxy server cannot reach the specified NTP server. This may occur due to:
+  - The proxy server not supporting UDP traffic relay
+  - Network routing issues between the proxy and target server
+  - Firewall restrictions blocking UDP traffic
 
 ## Controls
 
@@ -123,13 +150,6 @@ Round Trip Time: 45.2ms
 - **Tab**: Navigate form fields
 - **v**: Show version
 - **Ctrl+C**: Exit
-
-## Troubleshooting
-
-**Command not found**: Add binary to PATH or use `./socks5-udp-checker`
-**Permission denied**: Run `chmod +x socks5-udp-checker`
-**Connection timeout**: Check proxy address and network connectivity
-**Authentication failed**: Verify username and password
 
 ## License
 
