@@ -74,6 +74,10 @@ func parseSocks5String(socks5Str string) (socks5Config, error) {
 		regexp.MustCompile(`^socks5://(?P<host>[^:]+):(?P<port>\d+)$`),
 		// socks5:host:port
 		regexp.MustCompile(`^socks5:(?P<host>[^:]+):(?P<port>\d+)$`),
+		// host:port:username:password
+		regexp.MustCompile(`^(?P<host>[^:]+):(?P<port>\d+):(?P<username>[^:]+):(?P<password>.+)$`),
+		// host:port
+		regexp.MustCompile(`^(?P<host>[^:]+):(?P<port>\d+)$`),
 	}
 
 	// Try each pattern

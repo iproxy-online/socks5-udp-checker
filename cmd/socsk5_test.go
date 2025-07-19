@@ -59,6 +59,24 @@ func TestParseSocks5String(t *testing.T) {
 			},
 		},
 		{
+			name:  "host:port with credentials",
+			input: "kiwi.newzealand.co.nz:8080:kiwiuser:kiwipass",
+			expected: socks5Config{
+				address:  "kiwi.newzealand.co.nz:8080",
+				username: "kiwiuser",
+				password: "kiwipass",
+			},
+		},
+		{
+			name:  "host:port without credentials",
+			input: "kiwi.newzealand.co.nz:8080",
+			expected: socks5Config{
+				address:  "kiwi.newzealand.co.nz:8080",
+				username: "",
+				password: "",
+			},
+		},
+		{
 			name:     "empty string",
 			input:    "",
 			expected: socks5Config{},

@@ -159,9 +159,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = configState
 				m.result = nil
 				m.err = nil
-				// Reset to default values
-				m.formData.socks5URL = "socks5://localhost:1080"
-				m.formData.ntpServer = "time.google.com:123"
+
 				return m, m.form.Init()
 			}
 		case "esc":
