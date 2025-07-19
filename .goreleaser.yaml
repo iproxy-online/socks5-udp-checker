@@ -12,7 +12,7 @@ before:
 
 builds:
   - id: socks5-udp-checker
-    main: ./cmd/main.go
+    main: ./cmd
     binary: socks5-udp-checker
     env:
       - CGO_ENABLED=0
@@ -36,17 +36,16 @@ builds:
 
 archives:
   - id: default
+    formats:
+      - binary
     name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
+      {{ .ProjectName }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}amd64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    files:
-      - README.md
-      - LICENSE
-    wrap_in_directory: false
+      {{- if eq .Os "windows" }}.exe{{ end }}
 
 checksum:
   name_template: 'checksums.txt'
@@ -83,22 +82,37 @@ release:
   prerelease: auto
   mode: replace
   header: |
-    ## 🌐 SOCKS5 UDP Checker {{.Tag}}
+    ## SOCKS5 UDP Checker {{.Tag}}
 
-    Beautiful, interactive CLI tool to test UDP connectivity through SOCKS5 proxies using NTP.
+    A simple command-line tool for testing UDP support in SOCKS5 proxy servers using the Network Time Protocol (NTP).
 
-    ### 📦 Installation
+    SOCKS5 UDP Checker is a cross-platform command-line utility that verifies whether SOCKS5 proxy servers properly support UDP traffic forwarding. The tool performs this verification by attempting to execute Network Time Protocol (NTP) queries through the specified proxy connection.
 
-    Download the appropriate binary for your platform from the assets below.
+    ### Installation
 
-    ### 🚀 Quick Start
+    Download the appropriate binary for your operating system from the release assets below:
+
+    - **Linux**: `socks5-udp-checker-linux-amd64`
+    - **macOS (Intel)**: `socks5-udp-checker-darwin-amd64`
+    - **macOS (Apple Silicon)**: `socks5-udp-checker-darwin-arm64`
+    - **Windows**: `socks5-udp-checker-windows-amd64.exe`
+
+    ### Getting Started
+
+    Run the application from your terminal:
 
     ```bash
-    ./socks5-udp-checker
+    socks5-udp-checker
     ```
 
+    The interactive interface will guide you through:
+    1. Enter your SOCKS5 proxy details
+    2. Specify an NTP server (default: `time.google.com:123`)
+    3. Press Enter to test UDP connectivity
+    4. Review the results
+
   footer: |
-    ## 💝 Thanks
+    ## Thanks
 
     Thanks to everyone who contributed to this release!
 
