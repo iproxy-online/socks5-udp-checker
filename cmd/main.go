@@ -58,7 +58,6 @@ const (
 	configState state = iota
 	testingState
 	resultState
-	versionState
 )
 
 type formData struct {
@@ -162,17 +161,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				return m, m.form.Init()
 			}
-		case "esc":
-			if m.state == versionState {
-				m.state = configState
-				return m, nil
-			}
-		case "v":
-			if m.state == configState || m.state == resultState {
-				// Show version info in TUI modal
-				m.state = versionState
-				return m, nil
-			}
 		}
 
 	case testCompleteMsg:
@@ -243,14 +231,22 @@ func (m model) View() string {
 	// Header
 	content.WriteString(titleStyle.Render(fmt.Sprintf("🌐 SOCKS5 UDP Checker v%s", version)))
 	content.WriteString("\n")
-	content.WriteString(subtitleStyle.Render("Test UDP connectivity through SOCKS5 proxy using NTP"))
+	subtitle := "Test UDP connectivity through SOCKS5 proxy using NTP"
+	if commit != "none" {
+		shortCommit := commit
+		if len(shortCommit) > 7 {
+			shortCommit = shortCommit[:7]
+		}
+		subtitle += fmt.Sprintf(" • built from %s on %s by %s", shortCommit, date, builtBy)
+	}
+	content.WriteString(subtitleStyle.Render(subtitle))
 	content.WriteString("\n\n")
 
 	switch m.state {
 	case configState:
 		content.WriteString(m.form.View())
 		content.WriteString("\n")
-		content.WriteString(labelStyle.Render("Press Enter to start test • 'v' for version • Ctrl+C to quit"))
+		content.WriteString(labelStyle.Render("Press Enter to start test • Ctrl+C to quit"))
 
 	case testingState:
 		content.WriteString(fmt.Sprintf("%s Testing UDP connectivity through SOCKS5 proxy...\n\n", m.spinner.View()))
@@ -279,20 +275,6 @@ func (m model) View() string {
 		content.WriteString("\n\n")
 		content.WriteString(labelStyle.Render("Press Enter to run another test • Ctrl+C to quit"))
 
-	case versionState:
-		content.WriteString(infoStyle.Render("📋 Version Information"))
-		content.WriteString("\n\n")
-
-		versionInfo := fmt.Sprintf(`SOCKS5 UDP Checker
-  Version:  %s
-  Commit:   %s
-  Built:    %s
-  Built by: %s`,
-			version, commit, date, builtBy)
-
-		content.WriteString(boxStyle.Render(versionInfo))
-		content.WriteString("\n\n")
-		content.WriteString(labelStyle.Render("Press Esc to go back • Ctrl+C to quit"))
 	}
 
 	return content.String()
