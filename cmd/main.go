@@ -58,7 +58,6 @@ const (
 	configState state = iota
 	testingState
 	resultState
-	versionState
 )
 
 type formData struct {
@@ -82,28 +81,8 @@ type testCompleteMsg struct {
 	err    error
 }
 
-func initialModel() model {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
-
-	cfg := &config{
-		socks5Config: socks5Config{
-			address:  "localhost:1080",
-			username: "",
-			password: "",
-		},
-		ntpAddress: "time.google.com:123",
-	}
-
-	// Create form data that will persist
-	data := &formData{
-		socks5URL: "socks5://localhost:1080",
-		ntpServer: "time.google.com:123",
-	}
-
-	// Create the form and bind to the data fields
-	form := huh.NewForm(
+func createForm(data *formData) *huh.Form {
+	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
 				Title("SOCKS5 Connection URL").
@@ -133,6 +112,29 @@ func initialModel() model {
 				Placeholder("time.google.com:123"),
 		),
 	)
+}
+
+func initialModel() model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
+
+	cfg := &config{
+		socks5Config: socks5Config{
+			address:  "localhost:1080",
+			username: "",
+			password: "",
+		},
+		ntpAddress: "time.google.com:123",
+	}
+
+	// Create form data that will persist
+	data := &formData{
+		socks5URL: "socks5://localhost:1080",
+		ntpServer: "time.google.com:123",
+	}
+
+	form := createForm(data)
 
 	return model{
 		state:    configState,
@@ -156,29 +158,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			if m.state == resultState {
+				m.state = testingState
+				m.result = nil
+				m.err = nil
+				return m, tea.Batch(m.spinner.Tick, m.runTest())
+			}
+		case "esc":
+			if m.state == testingState || m.state == resultState {
 				m.state = configState
 				m.result = nil
 				m.err = nil
-
+				m.form = createForm(m.formData)
 				return m, m.form.Init()
-			}
-		case "esc":
-			if m.state == versionState {
-				m.state = configState
-				return m, nil
-			}
-		case "v":
-			if m.state == configState || m.state == resultState {
-				// Show version info in TUI modal
-				m.state = versionState
-				return m, nil
 			}
 		}
 
 	case testCompleteMsg:
-		m.state = resultState
-		m.result = msg.result
-		m.err = msg.err
+		if m.state == testingState {
+			m.state = resultState
+			m.result = msg.result
+			m.err = msg.err
+		}
 		return m, nil
 
 	case spinner.TickMsg:
@@ -243,30 +243,46 @@ func (m model) View() string {
 	// Header
 	content.WriteString(titleStyle.Render(fmt.Sprintf("🌐 SOCKS5 UDP Checker v%s", version)))
 	content.WriteString("\n")
-	content.WriteString(subtitleStyle.Render("Test UDP connectivity through SOCKS5 proxy using NTP"))
+	subtitle := "Test UDP connectivity through SOCKS5 proxy using NTP"
+	if commit != "none" {
+		shortCommit := commit
+		if len(shortCommit) > 7 {
+			shortCommit = shortCommit[:7]
+		}
+		subtitle += fmt.Sprintf(" • built from %s on %s by %s", shortCommit, date, builtBy)
+	}
+	content.WriteString(subtitleStyle.Render(subtitle))
 	content.WriteString("\n\n")
 
 	switch m.state {
 	case configState:
 		content.WriteString(m.form.View())
 		content.WriteString("\n")
-		content.WriteString(labelStyle.Render("Press Enter to start test • 'v' for version • Ctrl+C to quit"))
+		content.WriteString(labelStyle.Render("Ctrl+C to quit"))
 
 	case testingState:
 		content.WriteString(fmt.Sprintf("%s Testing UDP connectivity through SOCKS5 proxy...\n\n", m.spinner.View()))
 
 		// Show parsed SOCKS5 configuration
 		if m.config.username != "" {
-			content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s (authenticated)", m.config.address)))
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• SOCKS5 proxy: %s (authenticated)", m.config.address)))
 		} else {
-			content.WriteString(infoStyle.Render(fmt.Sprintf("• Connecting to SOCKS5 proxy: %s (no auth)", m.config.address)))
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• SOCKS5 proxy: %s (no auth)", m.config.address)))
 		}
 		content.WriteString("\n")
-		content.WriteString(infoStyle.Render(fmt.Sprintf("• Testing NTP server: %s", m.config.ntpAddress)))
+		content.WriteString(infoStyle.Render(fmt.Sprintf("• NTP server: %s", m.config.ntpAddress)))
 		content.WriteString("\n\n")
-		content.WriteString(labelStyle.Render("Please wait..."))
+		content.WriteString(labelStyle.Render("Press Esc to cancel • Ctrl+C to quit"))
 
 	case resultState:
+		if m.config.username != "" {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• SOCKS5 proxy: %s (authenticated)", m.config.address)))
+		} else {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("• SOCKS5 proxy: %s (no auth)", m.config.address)))
+		}
+		content.WriteString("\n")
+		content.WriteString(infoStyle.Render(fmt.Sprintf("• NTP server: %s", m.config.ntpAddress)))
+		content.WriteString("\n\n")
 		if m.err != nil {
 			content.WriteString(errorStyle.Render("❌ Test Failed"))
 			content.WriteString("\n\n")
@@ -277,22 +293,8 @@ func (m model) View() string {
 			content.WriteString(m.formatNTPResponse(m.result))
 		}
 		content.WriteString("\n\n")
-		content.WriteString(labelStyle.Render("Press Enter to run another test • Ctrl+C to quit"))
+		content.WriteString(labelStyle.Render("Press Enter to retry • Esc to change settings • Ctrl+C to quit"))
 
-	case versionState:
-		content.WriteString(infoStyle.Render("📋 Version Information"))
-		content.WriteString("\n\n")
-
-		versionInfo := fmt.Sprintf(`SOCKS5 UDP Checker
-  Version:  %s
-  Commit:   %s
-  Built:    %s
-  Built by: %s`,
-			version, commit, date, builtBy)
-
-		content.WriteString(boxStyle.Render(versionInfo))
-		content.WriteString("\n\n")
-		content.WriteString(labelStyle.Render("Press Esc to go back • Ctrl+C to quit"))
 	}
 
 	return content.String()
