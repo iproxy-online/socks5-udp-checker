@@ -263,6 +263,12 @@ func (m model) View() string {
 		content.WriteString(labelStyle.Render("Please wait..."))
 
 	case resultState:
+		if m.config.username != "" {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("Proxy: %s (authenticated)", m.config.address)))
+		} else {
+			content.WriteString(infoStyle.Render(fmt.Sprintf("Proxy: %s (no auth)", m.config.address)))
+		}
+		content.WriteString("\n\n")
 		if m.err != nil {
 			content.WriteString(errorStyle.Render("❌ Test Failed"))
 			content.WriteString("\n\n")
